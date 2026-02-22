@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
-    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar
+    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut
@@ -12,18 +12,30 @@ from data import AppData
 from list_widget import TodoListWidget
 from undo_commands import (
     MoveListToFrontCommand, MoveItemBetweenListsCommand,
-    AddItemCommand, DeleteItemCommand
+    AddItemCommand, DeleteItemCommand, RenameTabCommand
 )
 
 
+_TAB_HOT_ZONE_WIDTH = 18  # px from left edge of each tab → promote on double-click
+
+
 class HotTabBar(QTabBar):
-    """Tab bar where double-clicking a tab's hot zone moves the list to front."""
+    """Tab bar with two double-click zones per tab:
+    - Left 18 px (hot zone): double-click promotes the list to front
+    - Remainder (name area): double-click opens inline rename editor
+    """
     tab_promoted = Signal(int)
+    tab_rename_requested = Signal(int)
 
     def mouseDoubleClickEvent(self, event):
         index = self.tabAt(event.position().toPoint())
         if index >= 0:
-            self.tab_promoted.emit(index)
+            tab_rect = self.tabRect(index)
+            x_in_tab = event.position().toPoint().x() - tab_rect.left()
+            if x_in_tab <= _TAB_HOT_ZONE_WIDTH:
+                self.tab_promoted.emit(index)
+            else:
+                self.tab_rename_requested.emit(index)
         event.accept()
 
 
@@ -72,6 +84,7 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         hot_bar = HotTabBar()
         hot_bar.tab_promoted.connect(self._on_tab_promoted)
+        hot_bar.tab_rename_requested.connect(self._on_tab_rename_requested)
         self._tabs.setTabBar(hot_bar)
         self._tabs.setTabsClosable(False)
         self._tabs.setMovable(False)  # we handle reorder manually
@@ -116,6 +129,9 @@ class MainWindow(QMainWindow):
         self._tabs.removeTab(from_index)
         self._tabs.insertTab(to_index, widget, label)
         self._tabs.setCurrentIndex(to_index)
+
+    def rename_tab(self, index: int, new_name: str) -> None:
+        self._tabs.setTabText(index, new_name)
 
     def transfer_item(
         self,
@@ -171,6 +187,30 @@ class MainWindow(QMainWindow):
         if index == 0:
             return
         self._undo_stack.push(MoveListToFrontCommand(self, index))
+
+    def _on_tab_rename_requested(self, index: int) -> None:
+        old_name = self._tabs.tabText(index)
+        tab_rect = self._tabs.tabBar().tabRect(index)
+
+        editor = QLineEdit(old_name, self._tabs.tabBar())
+        editor.setGeometry(tab_rect)
+        editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        editor.setStyleSheet(
+            "QLineEdit { background: white; border: 1px solid #4682b4;"
+            "  border-radius: 2px; padding: 0 2px; }"
+        )
+        editor.selectAll()
+        editor.show()
+        editor.setFocus()
+
+        def _commit():
+            new_name = editor.text().strip()
+            editor.deleteLater()
+            if new_name and new_name != old_name:
+                self._undo_stack.push(RenameTabCommand(self, index, old_name, new_name))
+
+        editor.returnPressed.connect(_commit)
+        editor.editingFinished.connect(_commit)
 
     def _on_cross_drop_received(self, dest_lw: "TodoListWidget", to_index: int, text: str):
         """Handle a cross-list drag: find source list and create undo command."""

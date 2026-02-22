@@ -110,3 +110,18 @@ class DeleteItemCommand(QUndoCommand):
 
     def undo(self):
         self._list_widget.insert_item(self._item_index, self._text)
+
+
+class RenameTabCommand(QUndoCommand):
+    def __init__(self, window, index: int, old_name: str, new_name: str):
+        super().__init__("Rename list")
+        self._window = window
+        self._index = index
+        self._old_name = old_name
+        self._new_name = new_name
+
+    def redo(self):
+        self._window.rename_tab(self._index, self._new_name)
+
+    def undo(self):
+        self._window.rename_tab(self._index, self._old_name)
