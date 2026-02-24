@@ -52,6 +52,7 @@ class ItemTextEdit(QTextEdit):
     editing_finished = Signal(str)   # emits new text
     editing_started = Signal(str)    # emits old text (before edit begins)
     escape_pressed = Signal()
+    navigate_requested = Signal(int) # +1 down, -1 up
 
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
@@ -81,6 +82,15 @@ class ItemTextEdit(QTextEdit):
             self.escape_pressed.emit()
             event.accept()
             return
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:  # Cmd on macOS
+            if event.key() == Qt.Key.Key_Down:
+                self.navigate_requested.emit(1)
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Up:
+                self.navigate_requested.emit(-1)
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     def focusOutEvent(self, event):
@@ -102,6 +112,7 @@ class ItemWidget(QWidget):
     drag_requested = Signal()
     item_focused = Signal()             # emitted when the text editor gains focus
     editing_cancelled = Signal()        # emitted when Escape is pressed while editing
+    navigate_requested = Signal(int)    # emitted with ±1 on Cmd+Down/Up
 
     def __init__(self, text: str, parent=None):
         super().__init__(parent)
@@ -121,6 +132,7 @@ class ItemWidget(QWidget):
         )
         self.text_edit.editing_started.connect(lambda _: self.item_focused.emit())
         self.text_edit.escape_pressed.connect(self.editing_cancelled)
+        self.text_edit.navigate_requested.connect(self.navigate_requested)
 
         layout.addWidget(self.hot_zone)
         layout.addWidget(self.text_edit)

@@ -183,7 +183,19 @@ class TodoListWidget(QListWidget):
         w.drag_requested.connect(lambda: self._start_hot_zone_drag(item))
         w.item_focused.connect(lambda: self.setCurrentItem(item))
         w.editing_cancelled.connect(self.setFocus)
+        w.navigate_requested.connect(lambda delta, item=item: self._navigate_edit(item, delta))
         return w
+
+    def _navigate_edit(self, current_item: QListWidgetItem, delta: int) -> None:
+        target_index = self.row(current_item) + delta
+        if 0 <= target_index < self.count():
+            target_item = self.item(target_index)
+            self.setCurrentItem(target_item)
+            w = self.itemWidget(target_item)
+            if w:
+                w.text_edit.setFocus()
+        else:
+            self.setFocus()
 
     def _start_hot_zone_drag(self, item: QListWidgetItem) -> None:
         index = self.row(item)
