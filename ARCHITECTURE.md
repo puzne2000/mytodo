@@ -25,6 +25,7 @@ mytodo/
 ├── undo_commands.py   # QUndoCommand subclasses for every operation
 ├── data.py            # In-memory data model (pure Python dataclasses)
 ├── storage.py         # TOML serialisation / deserialisation
+├── style.py           # Visual constants (colours, dimensions, animation params)
 └── ARCHITECTURE.md    # This file
 ```
 
@@ -73,17 +74,39 @@ items = ["Buy groceries"]
 
 ---
 
+### `style.py` — Visual Constants
+
+Single source of truth for all appearance decisions. Import and edit here to change how the app looks without touching widget code.
+
+| Constant | What it controls |
+|---|---|
+| `ITEM_HOT_ZONE_WIDTH` | Width of the blue strip on each item |
+| `ITEM_HOT_ZONE_COLOR` / `_HOVER_COLOR` | Hot zone colours |
+| `ITEM_EDIT_FOCUS_BG` / `_BORDER` | Text editor highlight when focused |
+| `LIST_BG`, `ITEM_BG`, `ITEM_BORDER` | List and item background/border colours |
+| `ITEM_SELECTED_BG` / `_BORDER` | Selected item colours |
+| `TAB_HOT_ZONE_WIDTH` | Width of the promote zone on each tab |
+| `TAB_RENAME_BORDER` | Border colour of the inline rename editor |
+| `FLASH_COLOR` | Starting colour of the tab drop-flash overlay |
+| `FLASH_DURATION_MS` | How long the flash fade takes (milliseconds) |
+| `FLASH_EASING` | Animation easing curve (`QEasingCurve.Type`) |
+
+---
+
 ### `item_widget.py` — Single Item Row
 
 Each todo item is rendered as an `ItemWidget`:
 
 ```
 ItemWidget (QWidget, horizontal layout)
-├── HotZone (QFrame, 16 px wide)   ← double-click → promote to top
-└── ItemTextEdit (QTextEdit)        ← click to edit in place
+├── HotZone (QFrame, width from style.py)   ← double-click → promote to top
+│                                             ← drag → move to another list
+└── ItemTextEdit (QTextEdit)                 ← click to edit in place
 ```
 
-**`HotZone`** — a narrow blue strip on the left. `mouseDoubleClickEvent` emits `double_clicked`.
+**`HotZone`** — a narrow blue strip on the left.
+- `mouseDoubleClickEvent` → emits `double_clicked` (promote to top).
+- `mousePressEvent` / `mouseMoveEvent` → detects drag threshold and emits `drag_requested`. Returns immediately after emitting to avoid use-after-free if the widget is deleted during the drag.
 
 **`ItemTextEdit`** — a plain-text, auto-resizing editor.
 - On `focusIn`: records `_original_text` and emits `editing_started`.
@@ -93,6 +116,7 @@ ItemWidget (QWidget, horizontal layout)
 **`ItemWidget`** — assembles the two above and exposes:
 - `promote_requested` signal → wired to `TodoListWidget._on_promote`
 - `edit_committed(old, new)` signal → wired to `TodoListWidget._on_edit`
+- `drag_requested` signal → wired to `TodoListWidget._start_hot_zone_drag`
 - `text()` / `set_text()` accessors
 
 ---
@@ -104,8 +128,8 @@ ItemWidget (QWidget, horizontal layout)
 **Item storage:** each `QListWidgetItem` stores the item's plain text in `Qt.ItemDataRole.UserRole`. The associated `ItemWidget` is set via `setItemWidget`. The UserRole copy is kept in sync with live edits (used by drag-and-drop MIME payload and `all_texts()`).
 
 **Drag-and-drop:** uses a custom MIME type `application/x-mytodo-item` with payload `"<widget_id>|<from_index>|<text>"`.
-- Same-list drop → pushes `ReorderItemCommand` directly.
-- Cross-list drop → emits `cross_list_drop_received(to_index, text)`; `MainWindow` handles the undo command.
+- Same-list drop (from anywhere on the item) → pushes `ReorderItemCommand` directly.
+- Cross-list drop via hot zone drag → `_start_hot_zone_drag` builds the MIME payload and starts a `QDrag`. The drop is handled by `HotTabBar` (see below), not by the list widget itself.
 
 **Row moves:** `_move_row(from, to)` takes the item out, creates a fresh `QListWidgetItem` at the target position, and rebuilds the `ItemWidget`. This is necessary because Qt detaches widget bindings on `takeItem`.
 
@@ -116,9 +140,12 @@ ItemWidget (QWidget, horizontal layout)
 
 ### `window.py` — Main Window
 
-**`HotTabBar(QTabBar)`** — custom tab bar with two double-click zones per tab:
-- Left 18 px → emits `tab_promoted(index)` → moves list to the leftmost position
+**`HotTabBar(QTabBar)`** — custom tab bar with two double-click zones and drop support:
+- Left N px (from `style.TAB_HOT_ZONE_WIDTH`) → emits `tab_promoted(index)` → moves list to the leftmost position
 - Remainder → emits `tab_rename_requested(index)` → opens an inline `QLineEdit` over the tab label
+- Accepts `application/x-mytodo-item` drops → emits `item_dropped_on_tab(tab_index, payload)` → `MainWindow` moves the item to position 0 of the target list and calls `flash_tab(index)`
+
+**Flash animation** (`flash_tab`, `_update_flash`, `_clear_flash`, `paintEvent`): a `QVariantAnimation` interpolates `FLASH_COLOR` → transparent over `FLASH_DURATION_MS` ms. The current colour per tab is stored in `_flash_colors: dict[int, QColor]` and painted as a semi-transparent overlay on top of the normal tab bar in `paintEvent`. All animation parameters live in `style.py`.
 
 **`MainWindow(QMainWindow)`** layout:
 ```
@@ -177,3 +204,12 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 | `PySide6` | 6.10+ | Qt GUI framework |
 | `tomli_w` | 1.2+ | Write TOML files |
 | `tomllib` | stdlib (3.11+) | Read TOML files |
+
+---
+
+## Branch notes
+
+| Branch | Description |
+|---|---|
+| `main` | Stable baseline: tabs, editing, undo, inline tab rename |
+| `cross-list-drag` | Adds hot-zone drag to tab-drop, flash animation, `style.py` |
