@@ -93,6 +93,20 @@ class TodoListWidget(QListWidget):
         return [self.item(i).data(_TEXT_ROLE) or "" for i in range(self.count())]
 
     # ------------------------------------------------------------------ #
+    # Keyboard overrides                                                   #
+    # ------------------------------------------------------------------ #
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            item = self.currentItem()
+            if item:
+                w = self.itemWidget(item)
+                if w:
+                    w.text_edit.setFocus()
+            return
+        super().keyPressEvent(event)
+
+    # ------------------------------------------------------------------ #
     # Drag and drop overrides                                              #
     # ------------------------------------------------------------------ #
 
