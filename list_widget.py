@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, Signal, QMimeData, QByteArray
 from PySide6.QtGui import QDrag
 
 from item_widget import ItemWidget
+import style
 
 
 _MIME_TYPE = "application/x-mytodo-item"
@@ -37,10 +38,11 @@ class TodoListWidget(QListWidget):
         self.setSpacing(2)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setStyleSheet(
-            "QListWidget { border: none; background: #f5f5f5; }"
-            "QListWidget::item { background: white; border: 1px solid #ddd;"
-            "  border-radius: 4px; margin: 1px; }"
-            "QListWidget::item:selected { background: #e3f2fd; border-color: #90caf9; }"
+            f"QListWidget {{ border: none; background: {style.LIST_BG}; }}"
+            f"QListWidget::item {{ background: {style.ITEM_BG}; border: 1px solid {style.ITEM_BORDER};"
+            f"  border-radius: 4px; margin: 1px; }}"
+            f"QListWidget::item:selected {{ background: {style.ITEM_SELECTED_BG};"
+            f"  border-color: {style.ITEM_SELECTED_BORDER}; }}"
         )
 
         for text in items:
@@ -164,7 +166,19 @@ class TodoListWidget(QListWidget):
         w.text_edit.document().contentsChanged.connect(
             lambda: self._on_text_changed(item, w)
         )
+        w.drag_requested.connect(lambda: self._start_hot_zone_drag(item))
         return w
+
+    def _start_hot_zone_drag(self, item: QListWidgetItem) -> None:
+        index = self.row(item)
+        if index < 0:
+            return
+        text = item.data(_TEXT_ROLE) or ""
+        mime = QMimeData()
+        mime.setData(_MIME_TYPE, QByteArray(f"{id(self)}|{index}|{text}".encode()))
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.exec(Qt.DropAction.MoveAction)
 
     def _on_promote(self, item: QListWidgetItem) -> None:
         index = self.row(item)

@@ -1,30 +1,48 @@
 """Custom widget for a single todo item: a text box + a hot zone strip."""
 
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QTextEdit, QSizePolicy, QFrame
+    QWidget, QHBoxLayout, QTextEdit, QSizePolicy, QFrame, QApplication
 )
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QPoint
 from PySide6.QtGui import QColor, QPalette
 
-
-HOT_ZONE_WIDTH = 16  # px wide strip on the left side of each item
+import style
 
 
 class HotZone(QFrame):
-    """Narrow clickable strip; double-click promotes the item to top."""
+    """Narrow clickable strip; double-click promotes the item to top,
+    drag moves the item to another list."""
     double_clicked = Signal()
+    drag_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(HOT_ZONE_WIDTH)
+        self._drag_start: QPoint | None = None
+        self.setFixedWidth(style.ITEM_HOT_ZONE_WIDTH)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("Double-click to move to top")
+        self.setToolTip("Double-click to move to top  |  Drag to another list")
         self.setStyleSheet(
-            "QFrame { background: #b0c4de; border-radius: 3px; }"
-            "QFrame:hover { background: #4682b4; }"
+            f"QFrame {{ background: {style.ITEM_HOT_ZONE_COLOR}; border-radius: 3px; }}"
+            f"QFrame:hover {{ background: {style.ITEM_HOT_ZONE_HOVER_COLOR}; }}"
         )
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_start = event.position().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if (self._drag_start is not None
+                and event.buttons() & Qt.MouseButton.LeftButton):
+            dist = (event.position().toPoint() - self._drag_start).manhattanLength()
+            if dist >= QApplication.startDragDistance():
+                self._drag_start = None
+                self.drag_requested.emit()
+                return  # widget may be deleted by the time drag completes
+        super().mouseMoveEvent(event)
+
     def mouseDoubleClickEvent(self, event):
+        self._drag_start = None
         self.double_clicked.emit()
         event.accept()
 
@@ -44,7 +62,8 @@ class ItemTextEdit(QTextEdit):
         self.document().contentsChanged.connect(self._adjust_height)
         self.setStyleSheet(
             "QTextEdit { border: none; background: transparent; padding: 2px; }"
-            "QTextEdit:focus { background: #fffde7; border: 1px solid #aaa; border-radius: 2px; }"
+            f"QTextEdit:focus {{ background: {style.ITEM_EDIT_FOCUS_BG};"
+            f" border: 1px solid {style.ITEM_EDIT_FOCUS_BORDER}; border-radius: 2px; }}"
         )
 
     def _adjust_height(self):
@@ -72,6 +91,7 @@ class ItemWidget(QWidget):
     """A single todo item row: [hot-zone | text-editor]."""
     promote_requested = Signal()
     edit_committed = Signal(str, str)   # old_text, new_text
+    drag_requested = Signal()
 
     def __init__(self, text: str, parent=None):
         super().__init__(parent)
@@ -83,6 +103,7 @@ class ItemWidget(QWidget):
 
         self.hot_zone = HotZone(self)
         self.hot_zone.double_clicked.connect(self.promote_requested)
+        self.hot_zone.drag_requested.connect(self.drag_requested)
 
         self.text_edit = ItemTextEdit(text, self)
         self.text_edit.editing_finished.connect(

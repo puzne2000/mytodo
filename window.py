@@ -4,10 +4,11 @@ from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut
+from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation
+from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor
 
 import storage
+import style
 from data import AppData
 from list_widget import TodoListWidget
 from undo_commands import (
@@ -16,27 +17,105 @@ from undo_commands import (
 )
 
 
-_TAB_HOT_ZONE_WIDTH = 18  # px from left edge of each tab → promote on double-click
+_ITEM_MIME = "application/x-mytodo-item"
 
 
 class HotTabBar(QTabBar):
     """Tab bar with two double-click zones per tab:
-    - Left 18 px (hot zone): double-click promotes the list to front
+    - Left N px (hot zone): double-click promotes the list to front
     - Remainder (name area): double-click opens inline rename editor
+    Also accepts item drops: dropping an item on a tab moves it to that list
+    and briefly flashes the tab to confirm.
     """
     tab_promoted = Signal(int)
     tab_rename_requested = Signal(int)
+    item_dropped_on_tab = Signal(int, str)  # tab_index, mime payload
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self._flash_colors: dict[int, QColor] = {}
+        self._flash_anims: dict[int, QVariantAnimation] = {}
+
+    # ── Double-click zones ────────────────────────────────────────────────────
 
     def mouseDoubleClickEvent(self, event):
         index = self.tabAt(event.position().toPoint())
         if index >= 0:
-            tab_rect = self.tabRect(index)
-            x_in_tab = event.position().toPoint().x() - tab_rect.left()
-            if x_in_tab <= _TAB_HOT_ZONE_WIDTH:
+            x_in_tab = event.position().toPoint().x() - self.tabRect(index).left()
+            if x_in_tab <= style.TAB_HOT_ZONE_WIDTH:
                 self.tab_promoted.emit(index)
             else:
                 self.tab_rename_requested.emit(index)
         event.accept()
+
+    # ── Drag-and-drop ─────────────────────────────────────────────────────────
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat(_ITEM_MIME):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat(_ITEM_MIME):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if not event.mimeData().hasFormat(_ITEM_MIME):
+            event.ignore()
+            return
+        tab_index = self.tabAt(event.position().toPoint())
+        if tab_index < 0:
+            event.ignore()
+            return
+        payload = bytes(event.mimeData().data(_ITEM_MIME)).decode()
+        self.item_dropped_on_tab.emit(tab_index, payload)
+        event.acceptProposedAction()
+
+    # ── Flash animation ───────────────────────────────────────────────────────
+
+    def flash_tab(self, index: int) -> None:
+        """Briefly highlight a tab with a fading colour overlay."""
+        # Stop any in-progress animation for this tab
+        if index in self._flash_anims:
+            self._flash_anims[index].stop()
+
+        anim = QVariantAnimation(self)
+        anim.setStartValue(style.FLASH_COLOR)
+        anim.setEndValue(QColor(style.FLASH_COLOR.red(),
+                                style.FLASH_COLOR.green(),
+                                style.FLASH_COLOR.blue(), 0))
+        anim.setDuration(style.FLASH_DURATION_MS)
+        anim.setEasingCurve(style.FLASH_EASING)
+        anim.valueChanged.connect(lambda color, i=index: self._update_flash(i, color))
+        anim.finished.connect(lambda i=index: self._clear_flash(i))
+        anim.start(QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
+
+        self._flash_colors[index] = style.FLASH_COLOR
+        self._flash_anims[index] = anim
+
+    def _update_flash(self, index: int, color: QColor) -> None:
+        self._flash_colors[index] = color
+        self.update()
+
+    def _clear_flash(self, index: int) -> None:
+        self._flash_colors.pop(index, None)
+        self._flash_anims.pop(index, None)
+        self.update()
+
+    # ── Painting ──────────────────────────────────────────────────────────────
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._flash_colors:
+            return
+        painter = QPainter(self)
+        for index, color in self._flash_colors.items():
+            painter.fillRect(self.tabRect(index), color)
+        painter.end()
 
 
 class MainWindow(QMainWindow):
@@ -85,6 +164,7 @@ class MainWindow(QMainWindow):
         hot_bar = HotTabBar()
         hot_bar.tab_promoted.connect(self._on_tab_promoted)
         hot_bar.tab_rename_requested.connect(self._on_tab_rename_requested)
+        hot_bar.item_dropped_on_tab.connect(self._on_item_dropped_on_tab)
         self._tabs.setTabBar(hot_bar)
         self._tabs.setTabsClosable(False)
         self._tabs.setMovable(False)  # we handle reorder manually
@@ -196,7 +276,7 @@ class MainWindow(QMainWindow):
         editor.setGeometry(tab_rect)
         editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
         editor.setStyleSheet(
-            "QLineEdit { background: white; border: 1px solid #4682b4;"
+            f"QLineEdit {{ background: white; border: 1px solid {style.TAB_RENAME_BORDER};"
             "  border-radius: 2px; padding: 0 2px; }"
         )
         editor.selectAll()
@@ -211,6 +291,29 @@ class MainWindow(QMainWindow):
 
         editor.returnPressed.connect(_commit)
         editor.editingFinished.connect(_commit)
+
+    def _on_item_dropped_on_tab(self, tab_index: int, payload: str) -> None:
+        source_id_str, from_index_str, text = payload.split("|", 2)
+        source_id = int(source_id_str)
+        from_index = int(from_index_str)
+
+        src_lw = None
+        from_list_index = -1
+        for i in range(self._tabs.count()):
+            lw = self._list_widget_at(i)
+            if id(lw) == source_id:
+                src_lw = lw
+                from_list_index = i
+                break
+
+        if src_lw is None or from_list_index == tab_index:
+            return
+
+        self._undo_stack.push(MoveItemBetweenListsCommand(
+            self, from_list_index, from_index,
+            tab_index, 0, text
+        ))
+        self._tabs.tabBar().flash_tab(tab_index)
 
     def _on_cross_drop_received(self, dest_lw: "TodoListWidget", to_index: int, text: str):
         """Handle a cross-list drag: find source list and create undo command."""
