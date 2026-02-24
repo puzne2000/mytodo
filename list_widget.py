@@ -167,6 +167,8 @@ class TodoListWidget(QListWidget):
             lambda: self._on_text_changed(item, w)
         )
         w.drag_requested.connect(lambda: self._start_hot_zone_drag(item))
+        w.item_focused.connect(lambda: self.setCurrentItem(item))
+        w.editing_cancelled.connect(self.setFocus)
         return w
 
     def _start_hot_zone_drag(self, item: QListWidgetItem) -> None:

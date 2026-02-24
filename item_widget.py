@@ -51,6 +51,7 @@ class ItemTextEdit(QTextEdit):
     """Single-item text editor that emits editing_finished when focus leaves."""
     editing_finished = Signal(str)   # emits new text
     editing_started = Signal(str)    # emits old text (before edit begins)
+    escape_pressed = Signal()
 
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
@@ -75,6 +76,13 @@ class ItemTextEdit(QTextEdit):
         self.editing_started.emit(self._original_text)
         super().focusInEvent(event)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.escape_pressed.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def focusOutEvent(self, event):
         new_text = self.toPlainText().strip()
         if new_text != self._original_text:
@@ -92,6 +100,8 @@ class ItemWidget(QWidget):
     promote_requested = Signal()
     edit_committed = Signal(str, str)   # old_text, new_text
     drag_requested = Signal()
+    item_focused = Signal()             # emitted when the text editor gains focus
+    editing_cancelled = Signal()        # emitted when Escape is pressed while editing
 
     def __init__(self, text: str, parent=None):
         super().__init__(parent)
@@ -109,6 +119,8 @@ class ItemWidget(QWidget):
         self.text_edit.editing_finished.connect(
             lambda new: self.edit_committed.emit(self.text_edit._original_text, new)
         )
+        self.text_edit.editing_started.connect(lambda _: self.item_focused.emit())
+        self.text_edit.escape_pressed.connect(self.editing_cancelled)
 
         layout.addWidget(self.hot_zone)
         layout.addWidget(self.text_edit)
