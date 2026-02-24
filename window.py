@@ -127,9 +127,10 @@ class MainWindow(QMainWindow):
         self._app_data = storage.load()
         self._undo_stack = QUndoStack(self)
 
-        # Undo / Redo shortcuts
+        # Shortcuts
         QShortcut(QKeySequence.StandardKey.Undo, self, self._undo_stack.undo)
         QShortcut(QKeySequence.StandardKey.Redo, self, self._undo_stack.redo)
+        QShortcut(QKeySequence.StandardKey.Save, self, self._save)
 
         self._build_ui()
         self._load_data()
@@ -351,9 +352,12 @@ class MainWindow(QMainWindow):
     # Save on close                                                        #
     # ------------------------------------------------------------------ #
 
-    def closeEvent(self, event):
+    def _save(self):
         self._sync_data_model()
         storage.save(self._app_data)
+
+    def closeEvent(self, event):
+        self._save()
         event.accept()
 
     def _sync_data_model(self):
