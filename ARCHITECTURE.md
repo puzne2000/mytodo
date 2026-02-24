@@ -111,12 +111,16 @@ ItemWidget (QWidget, horizontal layout)
 **`ItemTextEdit`** — a plain-text, auto-resizing editor.
 - On `focusIn`: records `_original_text` and emits `editing_started`.
 - On `focusOut`: if text changed, emits `editing_finished(new_text)`.
+- `keyPressEvent`: Escape → emits `escape_pressed`; Cmd+Down/Up → emits `navigate_requested(±1)`.
 - Height adjusts automatically as content grows.
 
 **`ItemWidget`** — assembles the two above and exposes:
 - `promote_requested` signal → wired to `TodoListWidget._on_promote`
 - `edit_committed(old, new)` signal → wired to `TodoListWidget._on_edit`
 - `drag_requested` signal → wired to `TodoListWidget._start_hot_zone_drag`
+- `item_focused` signal → wired to `TodoListWidget.setCurrentItem` (keeps list selection in sync with the text editor that has focus)
+- `editing_cancelled` signal → wired to `TodoListWidget.setFocus` (Escape exits edit mode)
+- `navigate_requested(±1)` signal → wired to `TodoListWidget._navigate_edit`
 - `text()` / `set_text()` accessors
 
 ---
@@ -132,6 +136,8 @@ ItemWidget (QWidget, horizontal layout)
 - Cross-list drop via hot zone drag → `_start_hot_zone_drag` builds the MIME payload and starts a `QDrag`. The drop is handled by `HotTabBar` (see below), not by the list widget itself.
 
 **Row moves:** `_move_row(from, to)` takes the item out, creates a fresh `QListWidgetItem` at the target position, and rebuilds the `ItemWidget`. This is necessary because Qt detaches widget bindings on `takeItem`.
+
+**Keyboard handling** (`keyPressEvent`): Enter starts editing the current item (focuses its `ItemTextEdit`). `_navigate_edit(item, delta)` commits the active edit and moves focus to the adjacent item, or returns focus to the list at the boundary.
 
 **Public API** (called by undo commands):
 `set_item_text`, `move_item_to_top`, `move_item_from_top`, `reorder_item`, `append_item`, `remove_last_item`, `remove_item`, `insert_item`, `all_texts`
@@ -161,10 +167,9 @@ QMainWindow
 
 Key responsibilities:
 - Owns the single `QUndoStack` shared across all list widgets.
-- Wires Ctrl+Z / Ctrl+Shift+Z shortcuts to the undo stack.
+- Wires Ctrl+Z / Ctrl+Shift+Z and Cmd+S shortcuts to undo and save.
 - Handles cross-list drag-drop by finding the source list and pushing `MoveItemBetweenListsCommand`.
-- `_sync_data_model()` rebuilds `AppData` from widget state before saving.
-- `closeEvent` calls `_sync_data_model()` then `storage.save()`.
+- `_save()` syncs widget state into `AppData` and writes to disk; called by both Cmd+S and `closeEvent`.
 
 **Public API** (called by undo commands):
 `move_tab_to_front(from, to)`, `rename_tab(index, new_name)`, `transfer_item(from_list, from_item, to_list, to_item, text)`
@@ -190,10 +195,15 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| Ctrl+Z | Undo |
-| Ctrl+Shift+Z | Redo |
+| Shortcut | Context | Action |
+|---|---|---|
+| Cmd+Z | anywhere | Undo |
+| Cmd+Shift+Z | anywhere | Redo |
+| Cmd+S | anywhere | Save to disk immediately |
+| Enter | list focused | Start editing the selected item |
+| Escape | editing an item | Commit edit, return focus to list |
+| Cmd+Down | editing an item | Commit edit, move to item below |
+| Cmd+Up | editing an item | Commit edit, move to item above |
 
 ---
 
@@ -209,7 +219,4 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 
 ## Branch notes
 
-| Branch | Description |
-|---|---|
-| `main` | Stable baseline: tabs, editing, undo, inline tab rename |
-| `cross-list-drag` | Adds hot-zone drag to tab-drop, flash animation, `style.py` |
+`cross-list-drag` has been merged into `main`. All features are on `main`.
