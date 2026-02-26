@@ -25,6 +25,7 @@ class TodoListWidget(QListWidget):
     # Signals to the window for cross-list drops
     cross_list_drop_received = Signal(int, str)  # dest_index, text
     cross_list_drop_sent = Signal(int)            # src_index that was removed
+    navigate_tab_requested = Signal(int)          # delta (+1 right, -1 left)
 
     def __init__(self, items: list[str], undo_stack, parent=None):
         super().__init__(parent)
@@ -104,6 +105,19 @@ class TodoListWidget(QListWidget):
                 if w:
                     w.text_edit.setFocus()
             return
+        if event.key() == Qt.Key.Key_Escape:
+            self.setCurrentItem(None)
+            return
+        if event.key() == Qt.Key.Key_Up and self.currentRow() == 0:
+            self.setCurrentItem(None)
+            return
+        if self.currentRow() == -1:
+            if event.key() == Qt.Key.Key_Right:
+                self.navigate_tab_requested.emit(1)
+                return
+            if event.key() == Qt.Key.Key_Left:
+                self.navigate_tab_requested.emit(-1)
+                return
         super().keyPressEvent(event)
 
     # ------------------------------------------------------------------ #

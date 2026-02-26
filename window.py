@@ -188,6 +188,7 @@ class MainWindow(QMainWindow):
         lw.cross_list_drop_received.connect(
             lambda to_idx, text, lw=lw: self._on_cross_drop_received(lw, to_idx, text)
         )
+        lw.navigate_tab_requested.connect(self._on_navigate_tab)
         self._tabs.addTab(lw, name)
         return lw
 
@@ -263,6 +264,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # Signal handlers                                                      #
     # ------------------------------------------------------------------ #
+
+    def _on_navigate_tab(self, delta: int) -> None:
+        new_index = max(0, min(self._tabs.currentIndex() + delta, self._tabs.count() - 1))
+        self._tabs.setCurrentIndex(new_index)
 
     def _on_tab_promoted(self, index: int) -> None:
         if index == 0:
