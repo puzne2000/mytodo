@@ -3,8 +3,8 @@
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QTextEdit, QSizePolicy, QFrame, QApplication
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF
+from PySide6.QtGui import QColor, QPalette, QPainter, QPen
 
 import style
 
@@ -117,6 +117,7 @@ class ItemWidget(QWidget):
     def __init__(self, text: str, parent=None):
         super().__init__(parent)
         self.setAutoFillBackground(True)
+        self._selected: bool = False
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
@@ -147,3 +148,24 @@ class ItemWidget(QWidget):
         self.text_edit.setPlainText(text)
         self.text_edit._original_text = text
         self.text_edit.blockSignals(False)
+
+    def set_selected(self, selected: bool) -> None:
+        if self._selected != selected:
+            self._selected = selected
+            self.update()
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        if not self._selected:
+            return
+        bw = style.ITEM_SELECTED_BORDER_WIDTH
+        inset = bw / 2.0
+        rect = QRectF(self.rect()).adjusted(inset, inset, -inset, -inset)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(QColor(style.ITEM_SELECTED_BORDER))
+        pen.setWidthF(bw)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(rect, 4.0, 4.0)
+        painter.end()

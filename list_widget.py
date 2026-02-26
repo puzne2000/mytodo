@@ -45,6 +45,7 @@ class TodoListWidget(QListWidget):
             f"QListWidget::item:selected {{ background: {style.ITEM_SELECTED_BG};"
             f"  border: {style.ITEM_SELECTED_BORDER_WIDTH}px solid {style.ITEM_SELECTED_BORDER}; }}"
         )
+        self.currentItemChanged.connect(self._on_selection_changed)
 
         for text in items:
             self._append_row(text)
@@ -256,3 +257,17 @@ class TodoListWidget(QListWidget):
 
     def _sync_size(self, item: QListWidgetItem, w: ItemWidget) -> None:
         item.setSizeHint(w.sizeHint())
+
+    def _on_selection_changed(
+        self,
+        current: QListWidgetItem | None,
+        previous: QListWidgetItem | None,
+    ) -> None:
+        if previous is not None:
+            w = self.itemWidget(previous)
+            if w is not None:
+                w.set_selected(False)
+        if current is not None:
+            w = self.itemWidget(current)
+            if w is not None:
+                w.set_selected(True)
