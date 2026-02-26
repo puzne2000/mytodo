@@ -118,6 +118,8 @@ class TodoListWidget(QListWidget):
             if event.key() == Qt.Key.Key_Left:
                 self.navigate_tab_requested.emit(-1)
                 return
+            if event.key() == Qt.Key.Key_Up:
+                return
         super().keyPressEvent(event)
 
     # ------------------------------------------------------------------ #

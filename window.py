@@ -169,6 +169,7 @@ class MainWindow(QMainWindow):
         self._tabs.setTabBar(hot_bar)
         self._tabs.setTabsClosable(False)
         self._tabs.setMovable(False)  # we handle reorder manually
+        self._tabs.currentChanged.connect(self._on_tab_changed)
         root.addWidget(self._tabs)
 
     def _load_data(self):
@@ -264,6 +265,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # Signal handlers                                                      #
     # ------------------------------------------------------------------ #
+
+    def _on_tab_changed(self, index: int) -> None:
+        lw = self._list_widget_at(index)
+        if lw:
+            lw.setCurrentItem(None)
 
     def _on_navigate_tab(self, delta: int) -> None:
         new_index = max(0, min(self._tabs.currentIndex() + delta, self._tabs.count() - 1))
