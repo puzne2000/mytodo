@@ -112,6 +112,20 @@ class TodoListWidget(QListWidget):
         if event.key() == Qt.Key.Key_Up and self.currentRow() == 0:
             self.setCurrentItem(None)
             return
+        if (event.modifiers() & Qt.KeyboardModifier.ControlModifier
+                and event.key() == Qt.Key.Key_Backspace):
+            item = self.currentItem()
+            if item:
+                index = self.row(item)
+                text = item.data(_TEXT_ROLE) or ""
+                from undo_commands import DeleteItemCommand
+                self._undo_stack.push(DeleteItemCommand(self, index, text))
+                new_count = self.count()
+                if new_count > 0:
+                    self.setCurrentRow(min(index, new_count - 1))
+                else:
+                    self.setFocus()
+            return
         if self.currentRow() == -1:
             if event.key() == Qt.Key.Key_Right:
                 self.navigate_tab_requested.emit(1)
