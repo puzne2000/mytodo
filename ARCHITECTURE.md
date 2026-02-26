@@ -84,7 +84,8 @@ Single source of truth for all appearance decisions. Import and edit here to cha
 | `ITEM_HOT_ZONE_COLOR` / `_HOVER_COLOR` | Hot zone colours |
 | `ITEM_EDIT_FOCUS_BG` / `_BORDER` | Text editor highlight when focused |
 | `LIST_BG`, `ITEM_BG`, `ITEM_BORDER` | List and item background/border colours |
-| `ITEM_SELECTED_BG` / `_BORDER` | Selected item colours |
+| `ITEM_SELECTED_BG` / `_BORDER` | Selected item background and border colour |
+| `ITEM_SELECTED_BORDER_WIDTH` | Border width (px) of the selected item ring |
 | `TAB_HOT_ZONE_WIDTH` | Width of the promote zone on each tab |
 | `TAB_RENAME_BORDER` | Border colour of the inline rename editor |
 | `FLASH_COLOR` | Starting colour of the tab drop-flash overlay |
@@ -122,6 +123,8 @@ ItemWidget (QWidget, horizontal layout)
 - `editing_cancelled` signal → wired to `TodoListWidget.setFocus` (Escape exits edit mode)
 - `navigate_requested(±1)` signal → wired to `TodoListWidget._navigate_edit`
 - `text()` / `set_text()` accessors
+- `set_selected(bool)` — called by `TodoListWidget._on_selection_changed` to show/hide the selection border ring. Internally sets `_selected` and triggers a repaint.
+- `paintEvent` — draws a rounded-rect border using `ITEM_SELECTED_BORDER` / `ITEM_SELECTED_BORDER_WIDTH` from `style.py` when `_selected` is True. The pen is inset by half its width so it stays within the widget boundary.
 
 ---
 
@@ -137,7 +140,21 @@ ItemWidget (QWidget, horizontal layout)
 
 **Row moves:** `_move_row(from, to)` takes the item out, creates a fresh `QListWidgetItem` at the target position, and rebuilds the `ItemWidget`. This is necessary because Qt detaches widget bindings on `takeItem`.
 
-**Keyboard handling** (`keyPressEvent`): Enter starts editing the current item (focuses its `ItemTextEdit`). `_navigate_edit(item, delta)` commits the active edit and moves focus to the adjacent item, or returns focus to the list at the boundary.
+**Keyboard handling** (`keyPressEvent`):
+- Enter → start editing the current item (focus its `ItemTextEdit`).
+- Escape → deselect current item (`setCurrentItem(None)`).
+- Up (on row 0, not editing) → deselect current item.
+- Up (no item selected) → swallowed; nothing happens.
+- Down (no item selected) → Qt default selects the first item.
+- Left / Right (no item selected) → emit `navigate_tab_requested(±1)`.
+
+`_navigate_edit(item, delta)` commits the active edit and moves focus to the adjacent item, or returns focus to the list at the boundary.
+
+**Selection border:** `currentItemChanged` is connected to `_on_selection_changed`, which calls `set_selected(True/False)` on the affected `ItemWidget`s. Switching tabs clears selection via `window._on_tab_changed`.
+
+**Signals:**
+- `cross_list_drop_received(dest_index, text)` / `cross_list_drop_sent(src_index)` — cross-list drag
+- `navigate_tab_requested(delta)` — emitted when Left/Right pressed with no item selected; handled by `MainWindow._on_navigate_tab`
 
 **Public API** (called by undo commands):
 `set_item_text`, `move_item_to_top`, `move_item_from_top`, `reorder_item`, `append_item`, `remove_last_item`, `remove_item`, `insert_item`, `all_texts`
@@ -170,6 +187,8 @@ Key responsibilities:
 - Wires Ctrl+Z / Ctrl+Shift+Z and Cmd+S shortcuts to undo and save.
 - Handles cross-list drag-drop by finding the source list and pushing `MoveItemBetweenListsCommand`.
 - `_save()` syncs widget state into `AppData` and writes to disk; called by both Cmd+S and `closeEvent`.
+- `_on_tab_changed(index)` — clears item selection in the newly active list whenever the tab changes.
+- `_on_navigate_tab(delta)` — moves to the adjacent tab (clamped to valid range) in response to `navigate_tab_requested` from the active list widget.
 
 **Public API** (called by undo commands):
 `move_tab_to_front(from, to)`, `rename_tab(index, new_name)`, `transfer_item(from_list, from_item, to_list, to_item, text)`
@@ -200,10 +219,16 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 | Cmd+Z | anywhere | Undo |
 | Cmd+Shift+Z | anywhere | Redo |
 | Cmd+S | anywhere | Save to disk immediately |
-| Enter | list focused | Start editing the selected item |
+| Enter | list focused, item selected | Start editing the selected item |
 | Escape | editing an item | Commit edit, return focus to list |
+| Escape | item selected, not editing | Deselect item |
 | Cmd+Down | editing an item | Commit edit, move to item below |
 | Cmd+Up | editing an item | Commit edit, move to item above |
+| Up | first item selected, not editing | Deselect item |
+| Up | no item selected | No-op |
+| Down | no item selected | Select first item |
+| Left | no item selected | Navigate to previous list |
+| Right | no item selected | Navigate to next list |
 
 ---
 

@@ -17,7 +17,9 @@ All features are on the `main` branch. The app is functional and tested by the u
 - Double-click tab name → inline rename editor (undo-able)
 - Full undo stack (`QUndoStack`) for every operation
 - Cmd+S to save at any time; auto-save on close
-- Keyboard navigation: Enter starts editing, Escape finishes editing, Cmd+Down/Up moves between items while editing
+- Keyboard navigation: Enter starts editing; Escape finishes editing (or deselects item if not editing); Cmd+Down/Up moves between items while editing; Up on first item deselects; Down when nothing selected selects first item; Left/Right when nothing selected navigates between lists
+- Switching tabs always clears item selection in the new list
+- Selection border ring drawn by `ItemWidget.paintEvent` (uses `ITEM_SELECTED_BORDER` / `ITEM_SELECTED_BORDER_WIDTH` from `style.py`); driven by `TodoListWidget._on_selection_changed` via `currentItemChanged` signal — note: `QListWidget::item:selected` border is invisible (covered by ItemWidget), so the ring must be drawn by the widget itself
 - List selection synced with which text editor has keyboard focus (Delete always acts on the item being edited)
 - Tab flash animation on cross-list drop (fading blue overlay, `QVariantAnimation`)
 - `style.py` — all visual constants (colours, dimensions, animation params) in one place
@@ -40,7 +42,6 @@ All features are on the `main` branch. The app is functional and tested by the u
 - **Signal chain for editing**: `ItemTextEdit` → signals → `ItemWidget` → signals → `TodoListWidget` handles all the logic. Don't reach across layers.
 
 ## Things discussed but not yet built
-- **Keyboard navigation between lists** (Tab key or similar to switch tabs)
 - **Deleting items with keyboard** (the user was building toward this; Delete key while an item is focused)
 - **"New item" from keyboard** (e.g. Cmd+N or just pressing Enter at the end of a list)
 - Scrolling behaviour for long lists was confirmed to work out of the box (QListWidget handles it automatically)

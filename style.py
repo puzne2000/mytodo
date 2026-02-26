@@ -18,7 +18,7 @@ ITEM_BG = "white"
 ITEM_BORDER = "#ddd"
 ITEM_SELECTED_BG = "#e3f2fd"
 ITEM_SELECTED_BORDER = "#90caf9"
-ITEM_SELECTED_BORDER_WIDTH = 2
+ITEM_SELECTED_BORDER_WIDTH = 4
 
 # ── Tab bar ───────────────────────────────────────────────────────────────────
 TAB_HOT_ZONE_WIDTH = 18           # px from left edge of tab → promote-to-front zone
