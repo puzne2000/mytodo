@@ -43,7 +43,7 @@ class TodoListWidget(QListWidget):
             f"QListWidget::item {{ background: {style.ITEM_BG}; border: 1px solid {style.ITEM_BORDER};"
             f"  border-radius: 4px; margin: 1px; }}"
             f"QListWidget::item:selected {{ background: {style.ITEM_SELECTED_BG};"
-            f"  border-color: {style.ITEM_SELECTED_BORDER}; }}"
+            f"  border: {style.ITEM_SELECTED_BORDER_WIDTH}px solid {style.ITEM_SELECTED_BORDER}; }}"
         )
 
         for text in items:
