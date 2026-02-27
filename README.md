@@ -34,6 +34,8 @@ A keyboard-driven desktop todo app with tab-based lists, in-place editing, and f
 ## Installation
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install PySide6 tomli_w
 python3 main.py
 ```
