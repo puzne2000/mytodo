@@ -143,6 +143,7 @@ ItemWidget (QWidget, horizontal layout)
 **Keyboard handling** (`keyPressEvent`):
 - Enter → start editing the current item (focus its `ItemTextEdit`).
 - Escape → deselect current item (`setCurrentItem(None)`).
+- Cmd+Backspace (item selected, not editing) → push `DeleteItemCommand`; after deletion selects the item below, or the new last item if the deleted item was last, or focuses the list if it was the only item.
 - Up (on row 0, not editing) → deselect current item.
 - Up (no item selected) → swallowed; nothing happens.
 - Down (no item selected) → Qt default selects the first item.
@@ -187,11 +188,12 @@ Key responsibilities:
 - Wires Ctrl+Z / Ctrl+Shift+Z and Cmd+S shortcuts to undo and save.
 - Handles cross-list drag-drop by finding the source list and pushing `MoveItemBetweenListsCommand`.
 - `_save()` syncs widget state into `AppData` and writes to disk; called by both Cmd+S and `closeEvent`.
-- `_on_tab_changed(index)` — clears item selection in the newly active list whenever the tab changes.
+- `_on_tab_changed(index)` — clears item selection in the newly active list and posts `QTimer.singleShot(0, lw.setFocus)` to give focus to the `TodoListWidget` after Qt's own focus restoration runs (prevents Qt from restoring focus to an `ItemTextEdit` and silently entering edit mode).
 - `_on_navigate_tab(delta)` — moves to the adjacent tab (clamped to valid range) in response to `navigate_tab_requested` from the active list widget.
+- `_on_delete_item()` — if an item is selected, pushes `DeleteItemCommand`; if no item is selected and the list is empty, pushes `DeleteListCommand`; does nothing if the list has items but none is selected.
 
 **Public API** (called by undo commands):
-`move_tab_to_front(from, to)`, `rename_tab(index, new_name)`, `transfer_item(from_list, from_item, to_list, to_item, text)`
+`move_tab_to_front(from, to)`, `rename_tab(index, new_name)`, `remove_tab(index)`, `insert_tab(index, name)`, `transfer_item(from_list, from_item, to_list, to_item, text)`
 
 ---
 
@@ -209,6 +211,7 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 | `RenameTabCommand` | set tab text to new name | set tab text to old name |
 | `AddItemCommand` | append blank item | remove last item |
 | `DeleteItemCommand` | remove item at index | re-insert item at index with saved text |
+| `DeleteListCommand` | remove tab at index | re-insert empty tab at index with saved name |
 
 ---
 
@@ -227,6 +230,7 @@ All operations are reversible via `QUndoCommand` subclasses pushed onto the shar
 | Up | first item selected, not editing | Deselect item |
 | Up | no item selected | No-op |
 | Down | no item selected | Select first item |
+| Cmd+Backspace | item selected, not editing | Delete selected item |
 | Left | no item selected | Navigate to previous list |
 | Right | no item selected | Navigate to next list |
 
