@@ -13,7 +13,7 @@ from data import AppData
 from list_widget import TodoListWidget
 from undo_commands import (
     MoveListToFrontCommand, MoveItemBetweenListsCommand,
-    AddItemCommand, DeleteItemCommand, RenameTabCommand
+    AddItemCommand, DeleteItemCommand, DeleteListCommand, RenameTabCommand
 )
 
 
@@ -216,6 +216,21 @@ class MainWindow(QMainWindow):
     def rename_tab(self, index: int, new_name: str) -> None:
         self._tabs.setTabText(index, new_name)
 
+    def remove_tab(self, index: int) -> None:
+        self._tabs.removeTab(index)
+        new_count = self._tabs.count()
+        if new_count > 0:
+            self._tabs.setCurrentIndex(min(index, new_count - 1))
+
+    def insert_tab(self, index: int, name: str) -> None:
+        lw = TodoListWidget([], self._undo_stack)
+        lw.cross_list_drop_received.connect(
+            lambda to_idx, text, lw=lw: self._on_cross_drop_received(lw, to_idx, text)
+        )
+        lw.navigate_tab_requested.connect(self._on_navigate_tab)
+        self._tabs.insertTab(index, lw, name)
+        self._tabs.setCurrentIndex(index)
+
     def transfer_item(
         self,
         from_list: int, from_item: int,
@@ -257,6 +272,10 @@ class MainWindow(QMainWindow):
             return
         index = lw.currentRow()
         if index < 0:
+            if lw.count() == 0:
+                tab_index = self._tabs.currentIndex()
+                name = self._tabs.tabText(tab_index)
+                self._undo_stack.push(DeleteListCommand(self, tab_index, name))
             return
         item = lw.item(index)
         text = item.data(Qt.ItemDataRole.UserRole) or ""

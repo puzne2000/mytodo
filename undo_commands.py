@@ -112,6 +112,20 @@ class DeleteItemCommand(QUndoCommand):
         self._list_widget.insert_item(self._item_index, self._text)
 
 
+class DeleteListCommand(QUndoCommand):
+    def __init__(self, window, list_index: int, name: str):
+        super().__init__("Delete list")
+        self._window = window
+        self._list_index = list_index
+        self._name = name
+
+    def redo(self):
+        self._window.remove_tab(self._list_index)
+
+    def undo(self):
+        self._window.insert_tab(self._list_index, self._name)
+
+
 class RenameTabCommand(QUndoCommand):
     def __init__(self, window, index: int, old_name: str, new_name: str):
         super().__init__("Rename list")
