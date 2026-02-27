@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
 )
-from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation
+from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation, QTimer
 from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor
 
 import storage
@@ -289,6 +289,7 @@ class MainWindow(QMainWindow):
         lw = self._list_widget_at(index)
         if lw:
             lw.setCurrentItem(None)
+            QTimer.singleShot(0, lw.setFocus)
 
     def _on_navigate_tab(self, delta: int) -> None:
         new_index = max(0, min(self._tabs.currentIndex() + delta, self._tabs.count() - 1))
