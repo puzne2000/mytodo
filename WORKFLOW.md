@@ -95,6 +95,7 @@ If `dev` has accumulated messy or half-finished work and you want a clean slate:
 
 - **Run the app for personal use** → always from `mytodo/`
 - **Write new code** → always in `mytodo-dev/`
+- **Trivial changes** (typos, documentation, README edits) → fine to commit directly to `main`; no need to go through `dev`
 - **Commits on `dev`** → don't affect `main` until you merge
 - **Commits on `main`** → don't automatically appear in `mytodo-dev/`; pull them in with `git rebase main` or `git merge main` from the dev folder if needed
 - **Data files are independent** — changes to one folder's `.mytodo.toml` never affect the other
