@@ -5,7 +5,7 @@ import tomli_w
 from pathlib import Path
 from data import AppData, TodoList
 
-DEFAULT_PATH = Path.home() / ".mytodo.toml"
+DEFAULT_PATH = Path(__file__).parent / ".mytodo.toml"
 
 
 def load(path: Path = DEFAULT_PATH) -> AppData:

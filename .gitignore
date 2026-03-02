@@ -27,6 +27,9 @@ env/
 .env
 pip-wheel-metadata/
 
+# Data
+.mytodo.toml
+
 # IDEs
 .vscode/
 .idea/
