@@ -3,6 +3,9 @@
 from PySide6.QtGui import QColor
 from PySide6.QtCore import QEasingCurve
 
+# ── Window ────────────────────────────────────────────────────────────────────
+WINDOW_BG = "#f2e8e0"             # pale orange-grey background for the whole window
+
 # ── Item hot zone ─────────────────────────────────────────────────────────────
 ITEM_HOT_ZONE_WIDTH = 16          # px wide strip on the left of each item
 ITEM_HOT_ZONE_COLOR = "#b0c4de"

@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
 )
 from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation, QTimer
-from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor
+from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor, QPalette
 
 import storage
 import style
@@ -141,6 +141,10 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self):
         central = QWidget()
+        palette = central.palette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(style.WINDOW_BG))
+        central.setAutoFillBackground(True)
+        central.setPalette(palette)
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(8, 8, 8, 8)
