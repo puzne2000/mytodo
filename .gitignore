@@ -30,6 +30,9 @@ pip-wheel-metadata/
 # Data
 .mytodo.toml
 
+# Generated app bundle
+MyTodo.app/
+
 # IDEs
 .vscode/
 .idea/
