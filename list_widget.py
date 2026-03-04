@@ -108,6 +108,7 @@ class TodoListWidget(QListWidget):
             return
         if event.key() == Qt.Key.Key_Escape:
             self.setCurrentItem(None)
+            self.setFocus()
             return
         if event.key() == Qt.Key.Key_Up and self.currentRow() == 0:
             self.setCurrentItem(None)

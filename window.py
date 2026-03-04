@@ -131,6 +131,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence.StandardKey.Undo, self, self._undo_stack.undo)
         QShortcut(QKeySequence.StandardKey.Redo, self, self._undo_stack.redo)
         QShortcut(QKeySequence.StandardKey.Save, self, self._save)
+        QShortcut(QKeySequence("Ctrl+="), self, self._on_new_item)
+        QShortcut(QKeySequence("Ctrl++"), self, self._on_new_list)
 
         self._build_ui()
         self._load_data()
