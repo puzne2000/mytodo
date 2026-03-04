@@ -12,7 +12,7 @@
 
 **Keyboard handling** (`keyPressEvent`):
 - Enter → start editing the current item (focus its `ItemTextEdit`).
-- Escape → deselect current item (`setCurrentItem(None)`).
+- Escape → deselect current item (`setCurrentItem(None)`) and return focus to the list.
 - Cmd+Backspace (item selected, not editing) → push `DeleteItemCommand`; after deletion selects the item below, or the new last item if the deleted item was last, or focuses the list if it was the only item.
 - Up (on row 0, not editing) → deselect current item.
 - Up (no item selected) → swallowed; nothing happens.
@@ -20,6 +20,8 @@
 - Left / Right (no item selected) → emit `navigate_tab_requested(±1)`.
 
 `_navigate_edit(item, delta)` commits the active edit and moves focus to the adjacent item, or returns focus to the list at the boundary.
+
+`_on_delete_while_editing(item)` — called via `ItemWidget.delete_requested` when Cmd+Backspace is pressed on an empty item while editing; pushes `DeleteItemCommand` and selects the next item.
 
 **Selection border:** `currentItemChanged` is connected to `_on_selection_changed`, which calls `set_selected(True/False)` on the affected `ItemWidget`s. Switching tabs clears selection via `window._on_tab_changed`.
 

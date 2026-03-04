@@ -14,5 +14,9 @@
 | Up | no item selected | No-op |
 | Down | no item selected | Select first item |
 | Cmd+Backspace | item selected, not editing | Delete selected item |
+| Cmd+Backspace | editing an item, item has text | Clear all text (undoable with Cmd+Z) |
+| Cmd+Backspace | editing an item, item is empty | Delete the item |
+| Cmd+= | anywhere | Add new item to current list |
+| Cmd++ | anywhere | Add new list |
 | Left | no item selected | Navigate to previous list |
 | Right | no item selected | Navigate to next list |

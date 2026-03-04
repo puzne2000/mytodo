@@ -21,7 +21,7 @@ QMainWindow
 
 Key responsibilities:
 - Owns the single `QUndoStack` shared across all list widgets.
-- Wires Ctrl+Z / Ctrl+Shift+Z and Cmd+S shortcuts to undo and save.
+- Wires Ctrl+Z / Ctrl+Shift+Z, Cmd+S, Cmd+=, and Cmd++ shortcuts to undo, save, new item, and new list.
 - Handles cross-list drag-drop by finding the source list and pushing `MoveItemBetweenListsCommand`.
 - `_save()` syncs widget state into `AppData` and writes to disk; called by both Cmd+S and `closeEvent`.
 - `_on_tab_changed(index)` — clears item selection in the newly active list and posts `QTimer.singleShot(0, lw.setFocus)` to give focus to the `TodoListWidget` after Qt's own focus restoration runs (prevents Qt from restoring focus to an `ItemTextEdit` and silently entering edit mode).

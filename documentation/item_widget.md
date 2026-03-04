@@ -16,7 +16,7 @@ ItemWidget (QWidget, horizontal layout)
 **`ItemTextEdit`** — a plain-text, auto-resizing editor.
 - On `focusIn`: records `_original_text` and emits `editing_started`.
 - On `focusOut`: if text changed, emits `editing_finished(new_text)`.
-- `keyPressEvent`: Escape → emits `escape_pressed`; Cmd+Down/Up → emits `navigate_requested(±1)`.
+- `keyPressEvent`: Escape → emits `escape_pressed`; Cmd+Down/Up → emits `navigate_requested(±1)`; Cmd+Backspace with text → select-all + delete via cursor (goes through QTextEdit's own undo stack); Cmd+Backspace on empty → emits `delete_requested`.
 - Height adjusts automatically as content grows.
 
 **`ItemWidget`** — assembles the two above and exposes:
@@ -26,6 +26,7 @@ ItemWidget (QWidget, horizontal layout)
 - `item_focused` signal → wired to `TodoListWidget.setCurrentItem` (keeps list selection in sync with the text editor that has focus)
 - `editing_cancelled` signal → wired to `TodoListWidget.setFocus` (Escape exits edit mode)
 - `navigate_requested(±1)` signal → wired to `TodoListWidget._navigate_edit`
+- `delete_requested` signal → wired to `TodoListWidget._on_delete_while_editing` (deletes item via undo stack)
 - `text()` / `set_text()` accessors
 - `set_selected(bool)` — called by `TodoListWidget._on_selection_changed` to show/hide the selection border ring. Internally sets `_selected` and triggers a repaint.
 - `paintEvent` — draws a rounded-rect border using `ITEM_SELECTED_BORDER` / `ITEM_SELECTED_BORDER_WIDTH` from `style.py` when `_selected` is True. The pen is inset by half its width so it stays within the widget boundary.

@@ -4,6 +4,7 @@ Single source of truth for all appearance decisions. Import and edit here to cha
 
 | Constant | What it controls |
 |---|---|
+| `WINDOW_BG` | Main window background colour (orange-grey in `-dev` folder, neutral grey otherwise) |
 | `ITEM_HOT_ZONE_WIDTH` | Width of the blue strip on each item |
 | `ITEM_HOT_ZONE_COLOR` / `_HOVER_COLOR` | Hot zone colours |
 | `ITEM_EDIT_FOCUS_BG` / `_BORDER` | Text editor highlight when focused |
