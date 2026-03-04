@@ -53,6 +53,7 @@ class ItemTextEdit(QTextEdit):
     editing_started = Signal(str)    # emits old text (before edit begins)
     escape_pressed = Signal()
     navigate_requested = Signal(int) # +1 down, -1 up
+    delete_requested = Signal()      # Cmd+Backspace while text is empty
 
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
@@ -91,6 +92,16 @@ class ItemTextEdit(QTextEdit):
                 self.navigate_requested.emit(-1)
                 event.accept()
                 return
+            if event.key() == Qt.Key.Key_Backspace:
+                if self.toPlainText():
+                    self.selectAll()
+                    cursor = self.textCursor()
+                    cursor.removeSelectedText()
+                    self.setTextCursor(cursor)
+                else:
+                    self.delete_requested.emit()
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     def focusOutEvent(self, event):
@@ -113,6 +124,7 @@ class ItemWidget(QWidget):
     item_focused = Signal()             # emitted when the text editor gains focus
     editing_cancelled = Signal()        # emitted when Escape is pressed while editing
     navigate_requested = Signal(int)    # emitted with ±1 on Cmd+Down/Up
+    delete_requested = Signal()         # Cmd+Backspace while editing an empty item (deletes the item)
 
     def __init__(self, text: str, parent=None):
         super().__init__(parent)
@@ -134,6 +146,7 @@ class ItemWidget(QWidget):
         self.text_edit.editing_started.connect(lambda _: self.item_focused.emit())
         self.text_edit.escape_pressed.connect(self.editing_cancelled)
         self.text_edit.navigate_requested.connect(self.navigate_requested)
+        self.text_edit.delete_requested.connect(self.delete_requested)
 
         layout.addWidget(self.hot_zone)
         layout.addWidget(self.text_edit)
