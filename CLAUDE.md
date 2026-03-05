@@ -1,7 +1,8 @@
 # MyTodo — Project Context
 
 ## Project
-- **Location**: `/Users/guykindler/My Drive/python stuff/mytodo`
+- **Dev folder**: `/Users/guykindler/My Drive/python stuff/mytodo-dev` (this repo, `dev` branch)
+- **Production folder**: `/Users/guykindler/My Drive/python stuff/mytodo` (stable, managed via git worktree)
 - **Run**: `python3 main.py`
 - **What it is**: A desktop todo app built with Python 3 + PySide6 (Qt). Lists are organised as tabs; each list contains plain-text items. All mutations are undoable (Ctrl+Z). State persists to `.mytodo.toml` in the project directory.
 - **Full technical reference**: `ARCHITECTURE.md` — overview and index. Per-topic detail lives in `documentation/`.
@@ -31,7 +32,7 @@ list_widget.py     # TodoListWidget (items, drag-drop, keyboard nav)
 item_widget.py     # ItemWidget, HotZone, ItemTextEdit
 undo_commands.py   # all QUndoCommand subclasses
 data.py            # AppData / TodoList dataclasses (no Qt)
-storage.py         # TOML load/save → ~/.mytodo.toml
+storage.py         # TOML load/save → .mytodo.toml (project directory)
 style.py           # all visual constants — edit here to change appearance
 ARCHITECTURE.md    # overview + index (keep this updated)
 documentation/     # per-topic detail (main, data, storage, style, item_widget, list_widget, window, undo_commands, keyboard_shortcuts, dependencies)
