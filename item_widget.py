@@ -56,13 +56,14 @@ class ItemTextEdit(QTextEdit):
     delete_requested = Signal()      # Cmd+Backspace while text is empty
 
     def __init__(self, text: str, parent=None):
-        super().__init__(text, parent)
+        super().__init__(parent)
         self._original_text = text
         self.setAcceptRichText(False)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.document().contentsChanged.connect(self._adjust_height)
+        self.setPlainText(text)
         self.setStyleSheet(
             "QTextEdit { border: none; background: transparent; padding: 2px; }"
             f"QTextEdit:focus {{ background: {style.ITEM_EDIT_FOCUS_BG};"
@@ -157,10 +158,8 @@ class ItemWidget(QWidget):
         return self.text_edit.toPlainText()
 
     def set_text(self, text: str) -> None:
-        self.text_edit.blockSignals(True)
         self.text_edit.setPlainText(text)
         self.text_edit._original_text = text
-        self.text_edit.blockSignals(False)
 
     def set_selected(self, selected: bool) -> None:
         if self._selected != selected:
