@@ -1,7 +1,14 @@
 """Visual style constants — edit here to tweak the app's appearance."""
 
+import pathlib
+
 from PySide6.QtGui import QColor
 from PySide6.QtCore import QEasingCurve
+
+# ── Window ────────────────────────────────────────────────────────────────────
+# Pale orange-grey when running from a "-dev" folder; default grey otherwise.
+_is_dev = pathlib.Path(__file__).parent.name.endswith("-dev")
+WINDOW_BG = "#f2d8d0" if _is_dev else "#e8e8e8"
 
 # ── Item hot zone ─────────────────────────────────────────────────────────────
 ITEM_HOT_ZONE_WIDTH = 16          # px wide strip on the left of each item

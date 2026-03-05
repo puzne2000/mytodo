@@ -108,6 +108,7 @@ class TodoListWidget(QListWidget):
             return
         if event.key() == Qt.Key.Key_Escape:
             self.setCurrentItem(None)
+            self.setFocus()
             return
         if event.key() == Qt.Key.Key_Up and self.currentRow() == 0:
             self.setCurrentItem(None)
@@ -215,6 +216,7 @@ class TodoListWidget(QListWidget):
         w.item_focused.connect(lambda: self.setCurrentItem(item))
         w.editing_cancelled.connect(self.setFocus)
         w.navigate_requested.connect(lambda delta, item=item: self._navigate_edit(item, delta))
+        w.delete_requested.connect(lambda item=item: self._on_delete_while_editing(item))
         return w
 
     def _navigate_edit(self, current_item: QListWidgetItem, delta: int) -> None:
@@ -238,6 +240,17 @@ class TodoListWidget(QListWidget):
         drag = QDrag(self)
         drag.setMimeData(mime)
         drag.exec(Qt.DropAction.MoveAction)
+
+    def _on_delete_while_editing(self, item: QListWidgetItem) -> None:
+        index = self.row(item)
+        text = item.data(_TEXT_ROLE) or ""
+        from undo_commands import DeleteItemCommand
+        self._undo_stack.push(DeleteItemCommand(self, index, text))
+        new_count = self.count()
+        if new_count > 0:
+            self.setCurrentRow(min(index, new_count - 1))
+        else:
+            self.setFocus()
 
     def _on_promote(self, item: QListWidgetItem) -> None:
         index = self.row(item)
