@@ -85,6 +85,10 @@ class ItemTextEdit(QTextEdit):
             event.accept()
             return
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:  # Cmd on macOS
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.escape_pressed.emit()
+                event.accept()
+                return
             if event.key() == Qt.Key.Key_Down:
                 self.navigate_requested.emit(1)
                 event.accept()
