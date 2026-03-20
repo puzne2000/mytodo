@@ -2,10 +2,14 @@
 
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
-    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
+    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit,
+    QFileDialog
 )
 from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation, QTimer
 from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor, QPalette
+
+import datetime
+from pathlib import Path
 
 import storage
 import style
@@ -160,7 +164,9 @@ class MainWindow(QMainWindow):
         btn_new_item.clicked.connect(self._on_new_item)
         btn_del_item = QPushButton("Delete item")
         btn_del_item.clicked.connect(self._on_delete_item)
-        for btn in (btn_new_list, btn_new_item, btn_del_item):
+        btn_export = QPushButton("Export")
+        btn_export.clicked.connect(self._on_export)
+        for btn in (btn_new_list, btn_new_item, btn_del_item, btn_export):
             btn.setFixedHeight(28)
             toolbar.addWidget(btn)
         toolbar.addStretch()
@@ -286,6 +292,17 @@ class MainWindow(QMainWindow):
         item = lw.item(index)
         text = item.data(Qt.ItemDataRole.UserRole) or ""
         self._undo_stack.push(DeleteItemCommand(lw, index, text))
+
+    def _on_export(self):
+        self._save()
+        date_str = datetime.date.today().strftime("%Y%m%d")
+        default_name = f"mytodo{date_str}.toml"
+        default_path = str(Path.home() / default_name)
+        chosen, _ = QFileDialog.getSaveFileName(
+            self, "Export lists", default_path, "TOML files (*.toml)"
+        )
+        if chosen:
+            storage.save(self._app_data, Path(chosen))
 
     # ------------------------------------------------------------------ #
     # Signal handlers                                                      #
