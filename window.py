@@ -2,9 +2,12 @@
 
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
-    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit
+    QPushButton, QHBoxLayout, QInputDialog, QMessageBox, QTabBar, QLineEdit,
+    QFileDialog
 )
 from PySide6.QtCore import Qt, Signal, QVariantAnimation, QAbstractAnimation, QTimer
+from datetime import date
+from pathlib import Path
 from PySide6.QtGui import QUndoStack, QKeySequence, QShortcut, QPainter, QColor, QPalette
 
 import storage
@@ -160,7 +163,9 @@ class MainWindow(QMainWindow):
         btn_new_item.clicked.connect(self._on_new_item)
         btn_del_item = QPushButton("Delete item")
         btn_del_item.clicked.connect(self._on_delete_item)
-        for btn in (btn_new_list, btn_new_item, btn_del_item):
+        btn_export = QPushButton("Export")
+        btn_export.clicked.connect(self._on_export)
+        for btn in (btn_new_list, btn_new_item, btn_del_item, btn_export):
             btn.setFixedHeight(28)
             toolbar.addWidget(btn)
         toolbar.addStretch()
@@ -388,6 +393,15 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # Save on close                                                        #
     # ------------------------------------------------------------------ #
+
+    def _on_export(self):
+        self._save()
+        default_name = f"mytodo{date.today().strftime('%Y%m%d')}.toml"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export lists", default_name, "TOML files (*.toml)"
+        )
+        if path:
+            storage.save(self._app_data, Path(path))
 
     def _save(self):
         self._sync_data_model()
